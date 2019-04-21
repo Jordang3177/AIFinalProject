@@ -32,18 +32,10 @@ def clean_dataset(df):
     return df[indices_to_keep].astype(np.float64)
 
 def splitDataSet(csvReader):
-    Y = csvReader[['gender']]
-    Y = Y.fillna("unknown")
     Y = csvReader.values[:, 5]
-    list = []
     for i in range(0, len(Y)):
         if Y[i] != 'male' and Y[i] != 'female' and Y[i] != 'unknown' and Y[i] != 'brand':
-            list.append(i)
-    for i in range(0, len(list)):
-        Y[list[i]] = 'unknown'
-    for i in range(0, len(Y)):
-        if Y[i] != 'male' and Y[i] != 'female' and Y[i] != 'unknown' and Y[i] != 'brand':
-            print(i)
+            Y[i] = 'unknown'
     X = csvReader[['_trusted_judgments', 'gender:confidence', 'profile_yn:confidence', 'retweet_count']]
     X = X.fillna(X.mean())
     X = X.values[:, 0:3]
