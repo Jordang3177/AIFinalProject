@@ -35,12 +35,18 @@ def splitDataSet(csvReader):
     Y = csvReader[['gender']]
     Y = Y.fillna("unknown")
     Y = csvReader.values[:, 5]
-    print(Y)
+    list = []
+    for i in range(0, len(Y)):
+        if Y[i] != 'male' and Y[i] != 'female' and Y[i] != 'unknown' and Y[i] != 'brand':
+            list.append(i)
+    for i in range(0, len(list)):
+        Y[list[i]] = 'unknown'
+    for i in range(0, len(Y)):
+        if Y[i] != 'male' and Y[i] != 'female' and Y[i] != 'unknown' and Y[i] != 'brand':
+            print(i)
     X = csvReader[['_trusted_judgments', 'gender:confidence', 'profile_yn:confidence', 'retweet_count']]
     X = X.fillna(X.mean())
     X = X.values[:, 0:3]
-    print("This is X")
-    print(X)
     X_train, X_test, Y_train, Y_test, = train_test_split(X, Y, test_size=0.3, random_state= 100)
     return X, Y, X_train, X_test, Y_train, Y_test
 
@@ -77,19 +83,19 @@ def main():
     #data = clean_dataset(data)
     X, Y, X_train, X_test, Y_train, Y_test = splitDataSet(data)
     gini_classifier = train_with_gini_classifier(X_train, X_test, Y_train)
-    #entropy_classifier = train_with_entropy_classifier(X_train, X_test, Y_train)
+    entropy_classifier = train_with_entropy_classifier(X_train, X_test, Y_train)
 
     # Operational Phase
-    #print("Results Using Gini Index:")
+    print("Results Using Gini Index:")
 
     # Prediction using gini
-    #Y_prediction_with_gini = prediction(X_test, gini_classifier)
-    #calculate_accuracy(Y_test, Y_prediction_with_gini)
+    Y_prediction_with_gini = prediction(X_test, gini_classifier)
+    calculate_accuracy(Y_test, Y_prediction_with_gini)
 
-    #print("Results Using Entropy:")
+    print("Results Using Entropy:")
     # Prediction using entropy
-    #Y_prediction_with_entropy = prediction(X_test, entropy_classifier)
-    #calculate_accuracy(Y_test, Y_prediction_with_entropy)
+    Y_prediction_with_entropy = prediction(X_test, entropy_classifier)
+    calculate_accuracy(Y_test, Y_prediction_with_entropy)
 
 # Calling main function
 if __name__ == "__main__":
