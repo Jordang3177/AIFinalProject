@@ -79,7 +79,7 @@ def Splitting_Dataset_NoSK(dataset):
     i = 0
     while i < 5:
         while len(Folded_Set) < Size:
-            index = random.randrange(1, len(Copied_Dataset))
+            index = random.randrange(0, len(Copied_Dataset))
             popped_value = Copied_Dataset.pop(index)
             Folded_Set.append(popped_value)
         Split_Dataset.append(Folded_Set)
