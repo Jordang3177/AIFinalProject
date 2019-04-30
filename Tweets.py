@@ -8,6 +8,8 @@ from sklearn.metrics import accuracy_score, confusion_matrix
 from sklearn.metrics import classification_report
 
 
+#This is used to import the data in a format that is utilized for SKLearn, with Panda.
+#I established each of the columns so that they could referenced easily.
 def importdata():
     with open('Gender_Classifier.csv',encoding="utf8", errors='ignore') as csvDataFile:
         csvReader = pd.read_csv(csvDataFile)
@@ -18,14 +20,22 @@ def importdata():
                                               'tweet_created','tweet_id','tweet_location','user_timezone'])
         return df
 
+
+#This is meant to load in the dataset as a list rather than a dataset to be used below
 def Loading_Our_Dataset():
     data = open('Gender_Classifier.csv', encoding="utf8", errors="ignore")
     lines = reader(data)
     dataset = list(lines)
     return dataset
 
+
+#This is utilized to cleanse the dataset of any abnormalities. As well as popping all the data
+#That I don't want to use in the dataset.
 def Dataset_Cleansing(dataset):
+    #I had to pop the names of the columns out for an easier access of the numbers in the dataset
     dataset.pop(0)
+    #This is where i'm popping all of the data that I don't need
+    #This would need to be compleltley changed if you want to access different data because it's popping one at a time
     for i in range(0, len(dataset)):
         dataset[i].pop(0) #Unit Id
         dataset[i].pop(0) #Golden
@@ -46,13 +56,17 @@ def Dataset_Cleansing(dataset):
         dataset[i].pop(7) #tweet id
         dataset[i].pop(7) #tweet location
         dataset[i].pop(7) #user timezone
+    #I wanted to move the classifier to the end of the dataset to make it easier to iterate over things and
+    #easier to access the classification
     for i in range(0, len(dataset)):
         New_Thing = dataset[i].pop(1)
         dataset[i].append(New_Thing)
+    #Replacing all the null values with zero.
     for i in range(0, len(dataset)):
         for j in range(0, len(dataset[i]) - 1):
             if dataset[i][j] == '':
-                dataset[i][j] = '0'
+                dataset[i][j] = 0
+    #If there are any null values for the classifier I will put them as unknown.
     for i in range(0, len(dataset)):
         j = len(dataset[i]) - 1
         if dataset[i][j] != 'male' and dataset[i][j] != 'female' and dataset[i][j] != 'brand' and dataset[i][j] != 'unknown':
@@ -60,98 +74,162 @@ def Dataset_Cleansing(dataset):
     return dataset
 
 
+#This is used to split the dataset for the Sklearn algorithm to be used
 def splitDataSet(csvReader):
+    #Y will be used as the classifier set.
     Y = csvReader.values[:, 5]
+    #Cleansing the dataset to exclude null values
     for i in range(0, len(Y)):
         if Y[i] != 'male' and Y[i] != 'female' and Y[i] != 'unknown' and Y[i] != 'brand':
             Y[i] = 'unknown'
+    #Telling the X values which columns to take from.
     X = csvReader[['_trusted_judgments', 'gender:confidence', 'profile_yn:confidence', 'retweet_count', 'tweet_count', 'fav_number']]
+    #Filling the values with the mean of the dataset.
     X = X.fillna(X.mean())
+    #X values here will be those listed above.
     X = X.values[:, 0:5]
+    #This is where we start using Sklearn algorithms and here it's to make a training set split on X and Y, and I decided to do 50% as it seems to
+    #yeild one of the best results.
     X_train, X_test, Y_train, Y_test, = train_test_split(X, Y, test_size=0.5, random_state= 100)
     return X, Y, X_train, X_test, Y_train, Y_test
 
-def Splitting_Dataset_NoSK(dataset):
-    Split_Dataset = list()
-    Copied_Dataset = dataset
-    Size = math.trunc(len(dataset) / 5)
-    Folded_Set = list()
-    i = 0
-    while i < 5:
-        while len(Folded_Set) < Size:
-            index = random.randrange(0, len(Copied_Dataset))
-            popped_value = Copied_Dataset.pop(index)
-            Folded_Set.append(popped_value)
-        Split_Dataset.append(Folded_Set)
-        Folded_Set = list()
-        i += 1
-    return Split_Dataset
 
-
-
-def train_with_gini_classifier(X_train, X_test, Y_train):
+#This is where we will do a Decision Tree Classifier with the Gini index in mind, I also made the max depths insanely high because
+# I wanted this to be as accurate as it could be.
+#In order to help my understanding of how to use SKlearn I utilized this source:
+#https://www.geeksforgeeks.org/decision-tree-implementation-python/
+def train_with_gini_classifier(X_train, Y_train):
     gini_classifier = DecisionTreeClassifier(criterion="gini", random_state = 100, max_depth=200,
                                             min_samples_leaf=100, splitter="best", min_weight_fraction_leaf=0)
     gini_classifier.fit(X_train, Y_train)
     return gini_classifier
 
 
-def train_with_entropy_classifier(X_train, X_test, Y_train):
+#This is the same as the one above except that we will be using Entropy for this instead of using Gini.
+def train_with_entropy_classifier(X_train, Y_train):
     entropy_classifier = DecisionTreeClassifier(criterion="entropy", random_state= 100, max_depth=200,
                                                 min_samples_leaf=100, splitter="best", min_weight_fraction_leaf=0)
     entropy_classifier.fit(X_train, Y_train)
     return entropy_classifier
 
+
+#This is used to be a prediction metric for the actual against the test
 def prediction(X_test, classifier):
     y_pred = classifier.predict(X_test)
     return y_pred
 
+
+#This is where we will look at the accuracy of the testing done above.
 def calculate_accuracy(y_test, y_pred):
 
+    #In order for me to understand what exactly the confusion matrix meant I looked up at this website:
+    #https://towardsdatascience.com/understanding-confusion-matrix-a9ad42dcfd62
     print("Confusion Matrix: ",
           confusion_matrix(y_test, y_pred))
 
     print("Accuracy : ",
            accuracy_score(y_test, y_pred)*100)
-
+    #Source:
+    #https://scikit-learn.org/stable/modules/generated/sklearn.metrics.classification_report.html
     print("Report : ",
           classification_report(y_test, y_pred))
 
 
 #Everything Below here are Definitions that are used to determine Accuracy without SkLearn
 
+#In this part I tried to make a decision tree from scratch and below are the resources I used to accomplish this:
+#This one was extremely helpful in understanding how decision trees are made in both R and Python
+#as well as the pruning of the tree, which is seomthing I would like to implement next in my code.
+#https://www.analyticsvidhya.com/blog/2016/04/complete-tutorial-tree-based-modeling-scratch-in-python/
+#http://dataaspirant.com/2017/02/01/decision-tree-algorithm-python-with-scikit-learn/
+#http://openbookproject.net/thinkcs/python/english2e/ch21.html
+#https://machinelearningmastery.com/classification-and-regression-trees-for-machine-learning/
+#This next one does have a python implementation for what I have here, but I tried to only use the words that he stated as
+#a guide rather than looking directly looking at the code unless I was compleltey stuck. So this link was only utilized
+#to help guide me on a frame of mind and not just copy pasting code:
+#https://machinelearningmastery.com/implement-decision-tree-algorithm-scratch-python/
+
+
+#This is where we start spiltting the data for the algorithms later.
+#As you can see it will be based on a 5 decision that I hard codd in, this can be changed easily by just
+#replacing both the instances of 5 with whichever number you would like to use.
+def Splitting_Dataset_NoSK(dataset):
+    #This is where I'll be storing the split part of the dataset.
+    Split_Dataset = list()
+    #This is used to determine where I need to break the while loop later
+    #for later use if you want to make the list of scores longer you can change this five to be any number
+    Size = math.trunc(len(dataset) / 5)
+    #This is so that I have have somtehing to append with.
+    Folded_Set = list()
+    i = 0
+    #Also if you want to change the length of the list of scores you need to change this number as well.
+    while i < 5:
+        while len(Folded_Set) < Size:
+            #Using a random Range to just pick out a value and pop it into the folded set.
+            index = random.randrange(0, len(dataset))
+            #Stores the popped value
+            popped_value = dataset.pop(index)
+            #Appends the popped value in order to extend the size of the folded list to make the while loop stop eventually.
+            Folded_Set.append(popped_value)
+        #Starts to form the split dataset
+        Split_Dataset.append(Folded_Set)
+        #resets the folded set to do the while loop again.
+        Folded_Set = list()
+        i += 1
+    return Split_Dataset
+
+
+#We are defining our Gini index here as well as the clusters for the groups to be used later.
+#I need to come back and improve upon this later as it seems this is where almost all of the runtime is coming from.
+#This source helped with Gini:
+#https://www.geeksforgeeks.org/decision-tree-introduction-example/
 def Gini_Evaluation_And_Clusters_NoSK(classes, index, value, dataset):
-    Left_Classify = []
-    Right_Classify = []
+    #This is to either classify it above or below the line for the classes that are thrown in here.
+    Left_Classify = list()
+    Right_Classify = list()
+    #This is where we define where each value fits.
     for row in dataset:
         if row[index] < value:
             Left_Classify.append(row)
         else:
             Right_Classify.append(row)
+    #We need to make them all clustered together into something to classify them on later.
     clusters = Left_Classify, Right_Classify
-    Number_Of_Groups = 0.0
-    for cluster in clusters:
-        Number_Of_Groups += len(cluster)
-    gini = 0.0
-    for cluster in clusters:
-        size = float(len(cluster))
+    Number_Of_Groups = 0
+    #We need to figure out just how many clusters are in the dataset in order to find our gini index based on the algorithm.
+    for clump in clusters:
+        Number_Of_Groups += len(clump)
+    gini = 0
+    #This is where the main part of the Gini algorithm takes place
+    for clump in clusters:
+        #First we need to find the size of this clump.
+        size = len(clump)
+        tally = 0
+        #Then as long as it isn't zero we can evaluate on it.
         if size != 0:
-            score = 0.0
-            for class_val in classes:
+            #Now we need to figure out which of the classifications it is and if it's the one we need then we add one to the pvalue.
+            for classification in classes:
+                #Reseting the P value each time for each classification
                 p = 0
-                for row in cluster:
-                    if row[len(row) - 1] == class_val:
+                for row in clump:
+                    if row[len(row) - 1] == classification:
                         p += 1
+                #This is just the algorithm for finding the gini value.
+                #Having to find how many of each classification there is in each clump and adding that to the total amount
+                #which I made to be tally, and you do 1 - the total tally so far, and then multiply it by the size of the clump and
+                #divide it by the length of all the clumps
                 p = p / size
                 p = p * p
-                score = score + p
-            gini += (1.0 - score) * (size / Number_Of_Groups)
+                tally = tally + p
+            gini += (1 - tally) * (size / Number_Of_Groups)
     return gini, clusters
 
 
+#This was used to help with getting terminal cases for the tree later.
 def Terminal(group):
-    Outcomes = []
-    Unique_Outcomes = []
+    #Storing values in order to keep track which classifications are found.
+    Outcomes = list()
+    Unique_Outcomes = list()
     for row in group:
         Outcomes.append(row[len(row) - 1])
     for items in Outcomes:
@@ -160,40 +238,60 @@ def Terminal(group):
     return max(Unique_Outcomes, key=Outcomes.count)
 
 
+#This is the making of the tree, you can see the Main tree building part at Tree Splitting and
+#the way the nodes are made in Defining_Groups
 def Tree_Builder(train, max_depth, min_size):
     root = Defining_Groups(train)
     Tree_Splitting(root, max_depth, min_size, 1)
     return root
 
 
+#This is where we need to make the nodes for the tree.
 def Defining_Groups(dataset):
-    classifiers = []
+    classifiers = list()
+    #This is where we are going to be setting all the classifiers that we have in the data set
+    #For ours it is going to be male, female, brand, and unknown.
+    #I wanted to keep unknown as I believe that it can be helpful to determine if it doesn't know
+    #which one to group them in it will put it as unknown.
     for row in dataset:
         if row[len(row) - 1] not in classifiers:
             classifiers.append(row[-1])
-    index, value, score, initial_clusters = 999, 999, 999, None
-    for i in range(0, len(dataset[0]) - 1):
+    #This is just initilization of some values to be used to categorize the data.
+    index, value, score, initial_clusters = 400, 400, 400, None
+    #we will be iterating over each row in the list as well as keeping track of which column that we are in.
+    for column in range(0, len(dataset[0]) - 1):
         for row in dataset:
-            gini, clusters = Gini_Evaluation_And_Clusters_NoSK(classifiers, i, row[i], dataset)
+            #We need to find the gini value and the clusters that we will be using for later.
+            gini, clusters = Gini_Evaluation_And_Clusters_NoSK(classifiers, column, row[column], dataset)
+            #and if the gini is less than current value for score then we need to change all of the values.
             if gini < score:
-                index, value, score, initial_groups = i, row[i], gini, clusters
+                index, value, score, initial_groups = column, row[column], gini, clusters
+    #And once we are done evaluating the dataset we can return this node.
     return {'cluster': initial_groups, 'index': index, 'value': value}
 
 
+#This is the main part of making the tree. in which we are only going so far down the tree as well
+#and if we hit that point then we make a terminal node.
 def Tree_Splitting(node, max_depth, min_size, depth):
+    #Need to first define the left and right values as nodes which hvae the cluster
     left, right = node['cluster']
-    del (node['cluster'])
-    if not left or not right:
+    #if the left or the right are empty then we need to make them terminal nodes with all of each others values
+    if len(left) == 0 or len(right) == 0:
         node['left'] = node['right'] = Terminal(left + right)
         return
+    #if we have hit the max depth then we need to make terminal nodes for both sides.
     if depth >= max_depth:
         node['left'], node['right'] = Terminal(left), Terminal(right)
         return
+    #if the left node is lower than the minimum size then we will make it terminal.
     if len(left) <= min_size:
         node['left'] = Terminal(left)
     else:
+        #otherwise we have to figure out which groups to give it.
         node['left'] = Defining_Groups(left)
+        #as well as going deeper into the tree.
         Tree_Splitting(node['left'], max_depth, min_size, depth + 1)
+    #Same as the right side for the above left side.
     if len(right) <= min_size:
         node['right'] = Terminal(right)
     else:
@@ -201,37 +299,44 @@ def Tree_Splitting(node, max_depth, min_size, depth):
         Tree_Splitting(node['right'], max_depth, min_size, depth + 1)
 
 
+#This is where we will be gaterhing the accuracy of the data that we have.
 def Gathering_Scores(dataset, algorithm, max_depth, min_size):
+    #First we need the split dataset
     Split_Dataset = Splitting_Dataset_NoSK(dataset)
+    #And just making an empty list to score the scores in for later use.
     List_Of_Scores = list()
+    #Then for each fold that is in the dataset we will be iterating on.
+    #Where we will be looking at all the rows in each fold and then utilizing this to see if the algorithm is able to correctly
+    #classify and if so just how many times it is able to do this.
     for fold in Split_Dataset:
         Training_Set = list(Split_Dataset)
         Training_Set.remove(fold)
         Training_Set = sum(Training_Set, [])
         Testing_set = list()
+        #This is where we are gathering the testing set to be used in the decision tree algorithm
         for row in fold:
             List_Of_Rows = list(row)
             Testing_set.append(List_Of_Rows)
             List_Of_Rows[len(List_Of_Rows) - 1] = None
+        #finding the predicted values from the algorithm given, and here it will be the decision tree.
         predicted = algorithm(Training_Set, Testing_set, max_depth, min_size)
+        #Now we need to gather the actual values from the dataset.
         actual = list()
         for row in fold:
             actual += [row[len(row) - 1]]
-        Percentage_Correct = Scoring(actual, predicted)
+        #Once we have both the actual and the predicted values we can now check to see how good our predictions were.
+        Correct = 0
+        for i in range(0, len(actual)):
+            if predicted[i] == actual[i]:
+                Correct += 1
+        Percentage_Correct = Correct / len(actual) * 100
+        #and store them in a list to be displayed at the end.
         List_Of_Scores.append(Percentage_Correct)
     return List_Of_Scores
 
 
-def Scoring(actual, predicted):
-    correct = 0
-    answer = 0
-    for i in range(0, len(actual)):
-        if predicted[i] == actual[i]:
-            correct += 1
-    answer = correct / len(actual) * 100.0
-    return answer
 
-
+#This is evaluating which node to return based on the given nodes value.
 def Predictor(node, row):
     if row[node['index']] < node['value']:
         if type(node['left']) == dict:
@@ -245,6 +350,7 @@ def Predictor(node, row):
             return node['right']
 
 
+#This is the call for the deicision tree to be made and use the predictor algorithm in order to return the predictions.
 def Decision_Tree_Algorithm(train, test, max_depth, min_size):
     tree = Tree_Builder(train, max_depth, min_size)
     predictions = list()
@@ -255,11 +361,12 @@ def Decision_Tree_Algorithm(train, test, max_depth, min_size):
 
 
 def main():
+    #Beginning of the SKlearn part.
     data = importdata()
     X, Y, X_train, X_test, Y_train, Y_test = splitDataSet(data)
 
-    gini_classifier = train_with_gini_classifier(X_train, X_test, Y_train)
-    entropy_classifier = train_with_entropy_classifier(X_train, X_test, Y_train)
+    gini_classifier = train_with_gini_classifier(X_train, Y_train)
+    entropy_classifier = train_with_entropy_classifier(X_train, Y_train)
 
     print("Gini Index Evaluation:")
 
@@ -286,6 +393,8 @@ def main():
     print('Score for Fourth Fold: ', scores[3], '%')
     print('Score for Last Fold: ', scores[4], '%')
     print('Average for all Folds: ', (sum(scores) / len(scores)), '%')
+
+    #Ending of the Decision tree without SkLearn.
 
 if __name__ == "__main__":
     main()
