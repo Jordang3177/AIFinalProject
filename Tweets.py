@@ -68,7 +68,7 @@ def dataset_cleansing(dataset):
     for i in range(0, len(dataset)):
         for j in range(0, len(dataset[i]) - 1):
             if dataset[i][j] == '':
-                dataset[i][j] = 0
+                dataset[i][j] = '0'
     # If there are any null values for the classifier I will put them as unknown.
     for i in range(0, len(dataset)):
         j = len(dataset[i]) - 1
