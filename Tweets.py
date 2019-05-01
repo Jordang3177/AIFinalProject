@@ -10,6 +10,8 @@ from sklearn.metrics import classification_report
 
 # This is used to import the data in a format that is utilized for SKLearn, with Panda.
 # I established each of the columns so that they could referenced easily.
+# This link was used to help with the importing of this data and using the panda data frames:
+# https://towardsdatascience.com/a-quick-introduction-to-the-pandas-python-library-f1b678f34673
 def importdata():
     with open('Gender_Classifier.csv', encoding="utf8", errors='ignore') as csvDataFile:
         csvreader = pd.read_csv(csvDataFile)
